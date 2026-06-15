@@ -1,0 +1,37 @@
+name: CI
+
+# PR 進 main 時當作關卡(測試過才准合併);其他分支 push 也跑一次快速回饋。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]   # main 由 deploy.yml 接手
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # 精簡安裝:只裝「測試 import 得到 ingest/ask」所需的 runtime 套件 + 開發工具。
+      # 不裝 torch / streamlit / sentence-transformers(測試用不到),讓關卡跑得快。
+      # 完整全棧整合由 deploy 階段的 Docker build(會跑 ingest.py)驗證。
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install "chromadb>=0.5" "google-genai>=1.0" "python-dotenv>=1.0"
+          pip install -r requirements-dev.txt
+
+      - name: Ruff lint(風格 + 基本除錯)
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Pytest
+        run: pytest

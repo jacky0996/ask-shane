@@ -1,0 +1,14 @@
+# 不要進 build context(尤其 .env:金鑰絕不進 image)
+.env
+.venv/
+chroma_db/
+.hf_cache/
+__pycache__/
+*.pyc
+.git/
+.github/
+.pytest_cache/
+.ruff_cache/
+tests/
+*.md
+.DS_Store

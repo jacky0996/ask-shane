@@ -1,0 +1,14 @@
+# 集中放 lint / 測試設定(執行階段設定仍在 config.py)
+[tool.ruff]
+line-length = 120          # 放寬些:中文註解 / 字串較長
+target-version = "py311"
+
+[tool.ruff.lint]
+# F=pyflakes(基本除錯:未定義/未使用) E,W=pycodestyle(風格)
+# I=import 排序 B=易錯寫法 UP=現代化語法
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]      # 讓 tests/ 能 import 專案根目錄的 config / ask / ingest
+testpaths = ["tests"]
+addopts = "-q"

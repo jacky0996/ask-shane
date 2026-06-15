@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# huggingface 模型快取(build 時才產生)
+.hf_cache/
+
+# 向量庫(由 ingest.py 產生,可重建,不進 git)
+chroma_db/
+
+# macOS
+.DS_Store

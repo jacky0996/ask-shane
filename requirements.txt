@@ -1,0 +1,8 @@
+# Ask Shane — 相依套件
+# 安裝:python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+
+google-genai>=1.0        # Gemini API 官方 SDK(生成答案,免費層)
+chromadb>=0.5            # 本地向量資料庫(存 embedding、做相似度檢索)
+sentence-transformers>=3.0  # 本地 embedding 模型(免費、支援中文)
+python-dotenv>=1.0       # 從 .env 讀取 GEMINI_API_KEY
+streamlit>=1.40          # Phase 6 的網頁介面(app.py)

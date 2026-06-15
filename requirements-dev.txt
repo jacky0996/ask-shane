@@ -1,0 +1,4 @@
+# 開發 / CI 用工具(不進 runtime image,Dockerfile 不裝這些)
+#   pip install -r requirements-dev.txt
+ruff>=0.6        # lint(風格)+ 靜態除錯(未定義變數、未使用 import…)
+pytest>=8.0      # 單元測試
