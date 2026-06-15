@@ -1,14 +1,25 @@
 # Ask Shane — Streamlit RAG bot on Cloud Run
-FROM python:3.12-slim
+# 多階段 build:builder 裝相依 + 建知識庫,runtime 只留執行所需,image 更小更乾淨。
+
+# ─────────────────────────────────────────────────────────────
+# Stage 1 — builder:裝相依、建向量庫、烤 embedding 模型
+# ─────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     HF_HOME=/app/.hf_cache
 
 WORKDIR /app
 
-# 先裝相依(獨立成一層,利用 build cache)。
+# 用 venv 裝相依,之後整包 venv 搬到 runtime 階段(乾淨、好複製)。
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# 先升級 pip(固定版本,build 可重現),再裝相依(獨立成一層吃 build cache)。
 # torch 裝 CPU 版,避免抓進整包 CUDA(image 大、build 慢)。
+RUN pip install --no-cache-dir "pip==24.3.1"
 COPY requirements.txt .
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
  && pip install --no-cache-dir -r requirements.txt
@@ -22,9 +33,37 @@ COPY corpus/ ./corpus/
 # 讓容器冷啟動不必再下載(否則每次冷啟要抓 ~470MB 模型)。
 RUN python ingest.py
 
+# ─────────────────────────────────────────────────────────────
+# Stage 2 — runtime:只帶執行需要的東西,跑在非 root 帳號下
+# ─────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    HF_HOME=/app/.hf_cache \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# 非 root 使用者(安全性:容器不以 root 跑)
+RUN useradd --create-home --uid 10001 appuser
+
+WORKDIR /app
+
+# 從 builder 搬:相依(venv)、程式、語料、建好的向量庫、烤好的模型快取
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder --chown=appuser:appuser /app /app
+
+USER appuser
+
 # Cloud Run 會注入 PORT(預設 8080);Streamlit 綁 0.0.0.0、關掉互動式設定。
 ENV PORT=8080
 EXPOSE 8080
+
+# 健康檢查:打 Streamlit 內建的 /_stcore/health(用 python,免裝 curl)。
+# urlopen 遇非 2xx 會丟例外 → 退出碼非 0 → 標記 unhealthy。
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8080')+'/_stcore/health')" || exit 1
+
 CMD streamlit run app.py \
     --server.port=${PORT} \
     --server.address=0.0.0.0 \
