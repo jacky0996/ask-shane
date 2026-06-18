@@ -33,11 +33,11 @@ def get_resources():
 
 st.set_page_config(page_title="Ask Shane", page_icon="💬")
 st.title("💬 Ask Shane")
-st.caption("用自然語言認識林楨祥(Shane)。答案來自他的真實履歷與專案文件,並附上來源。")
+st.caption("此為RAG練習用AI服務，使用自然語言，讓求才方能夠簡易的理解我。")
 
 collection, client, system_prompt = get_resources()
 
-question = st.text_input("想問什麼?", placeholder="例如:他做過後端認證系統嗎?")
+question = st.text_input("想問什麼?", placeholder="例如:過往經歷?")
 
 if question:
     hits = retrieve(collection, question)
