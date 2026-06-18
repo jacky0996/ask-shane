@@ -33,7 +33,7 @@ def get_resources():
 
 st.set_page_config(page_title="Ask Shane", page_icon="💬")
 st.title("💬 Ask Shane")
-st.caption("此為RAG練習用AI服務，使用自然語言，讓求才方能夠簡易的理解我。")
+st.caption("此為使用RAG的AI服務，使用自然語言，讓求才方能夠簡易的理解我。")
 
 collection, client, system_prompt = get_resources()
 
