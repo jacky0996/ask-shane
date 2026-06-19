@@ -19,16 +19,20 @@ SYSTEM_PROMPT_PATH = BASE_DIR / "prompts" / "system.md"
 COLLECTION_NAME = "ask_shane"
 
 # --- Embedding(本地,免費,支援中文)---
-# 預設用較小的多語模型(~470MB,首次下載快),不需要 query/passage 前綴。
-# 想要更好的中文檢索品質可改成 "BAAI/bge-m3"(~2.3GB,較吃資源)。
-EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+# 用 BAAI/bge-m3:多語 / 中文檢索品質佳,對中文專有名詞(公司名等)辨識力強。
+# 代價:模型 ~2.3GB,首次下載較久、較吃記憶體(Cloud Run 建議 4Gi)。
+# 想要更輕量可改回 "paraphrase-multilingual-MiniLM-L12-v2"(~470MB,但中文 recall 較弱)。
+EMBEDDING_MODEL = "BAAI/bge-m3"
 
 # --- 切塊(chunking)---
 CHUNK_MAX_CHARS = 1200  # 每個 chunk 的大致上限(字元數)
 CHUNK_OVERLAP_BLOCKS = 1  # chunk 之間重疊幾個段落,避免句子被切斷失去上下文
+# 在「標題層級 <= 此值」的標題處切開新 chunk(2 = 只在 # / ## 切;### 子節跟父節同塊)。
+# 設 2 可讓「## 受雇工作經歷」下的各家公司(###)合成一塊,概括式問句一次命中。
+CHUNK_SPLIT_HEADING_LEVEL = 2
 
 # --- 檢索 ---
-TOP_K = 5  # 每次問答撈最相關的幾個 chunk 餵給 Claude
+TOP_K = 8  # 每次問答撈最相關的幾個 chunk 餵給 LLM(調高給檢索多點 recall 空間)
 
 # --- Gemini(生成答案,免費層)---
 # 模型可在 .env 用 GEMINI_MODEL 覆寫(換模型不用改程式);沒填就用預設。

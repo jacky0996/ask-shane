@@ -140,7 +140,7 @@ flowchart LR
 
 - [x] **Phase 0 — 準備**:`corpus/profile.md` 完成(整理自 104 履歷,受雇經歷 vs 個人作品集已分開);語料已內嵌 `corpus/`。⚠️ 待辦:建 venv、`pip install -r requirements.txt`、`cp .env.example .env` 填 key
 - [x] **Phase 1–2 — LLM / context(觀念)**:最終的 `ask.py` 已直接實作「檢索→組 context→呼叫 Claude」,涵蓋這兩階段的觀念
-- [x] **Phase 3 — Ingest**:`ingest.py` 完成(掃 `corpus/**` → 標題感知切塊 → Chroma)。⏳ 待跑 `python ingest.py`(首次會下載 embedding 模型 ~470MB)
+- [x] **Phase 3 — Ingest**:`ingest.py` 完成(掃 `corpus/**` → 標題感知切塊 → Chroma)。⏳ 待跑 `python ingest.py`(首次會下載 embedding 模型 bge-m3 ~2.3GB)
 - [x] **Phase 4 — Retrieve + Answer**:`ask.py` 完成(top-k 檢索 → 組 prompt → 串流回答 + 附來源)。⏳ 待跑 `python ask.py`
 - [x] **Phase 5 — Prompt 硬化**:`prompts/system.md` 已實作第 6 節全部防幻覺與應對規則。⏳ 待**實測**每類問題(私人/超綱/injection…)
 - [x] **Phase 6 — 介面**:`app.py`(Streamlit)完成,含來源顯示與 debug 片段。⏳ 待跑 `streamlit run app.py`

@@ -61,7 +61,7 @@ pip install -r requirements.txt
 # 2. 金鑰(到 https://aistudio.google.com/apikey 免費申請)
 cp .env.example .env        # 編輯 .env 填入 GEMINI_API_KEY
 
-# 3. 建知識庫(首次會下載 embedding 模型 ~470MB)
+# 3. 建知識庫(首次會下載 embedding 模型 bge-m3 ~2.3GB)
 python ingest.py
 
 # 4. 開問 —— CLI 或網頁二選一

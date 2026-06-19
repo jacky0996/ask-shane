@@ -34,15 +34,18 @@ def iter_blocks(text: str):
 def chunk_markdown(text: str):
     """把一份 markdown 切成數個 chunk。
 
-    策略:貪婪地把段落塞進同一個 chunk,直到接近 CHUNK_MAX_CHARS 就換下一個;
-    每個 chunk 前面補上它的章節標題當作上下文;chunk 之間保留少量重疊段落。
+    策略(真正的 header-aware):
+    1. **在標題邊界切開** —— 遇到新的標題段落就收掉目前 chunk、另起一個。
+       這讓每個小節(例:每家公司、每個故事)成為獨立 chunk,不會被別節稀釋。
+    2. 同一節內若段落太多、超過 CHUNK_MAX_CHARS,才在節內貪婪換塊。
+    3. 每個 chunk 前補章節標題當上下文;節內換塊之間保留少量重疊段落。
     """
     chunks: list[dict] = []
     cur_blocks: list[str] = []
     cur_heading = ""
     cur_len = 0
 
-    def flush():
+    def flush(keep_overlap: bool = True):
         nonlocal cur_blocks, cur_len
         if not cur_blocks:
             return
@@ -50,15 +53,27 @@ def chunk_markdown(text: str):
         starts_with_heading = cur_blocks[0].lstrip().startswith("#")
         prefix = f"## {cur_heading}\n\n" if (cur_heading and not starts_with_heading) else ""
         chunks.append({"heading": cur_heading, "text": prefix + "\n\n".join(cur_blocks)})
-        # 保留結尾幾個段落,當作下一個 chunk 的重疊(避免上下文斷裂)
-        overlap = cur_blocks[-config.CHUNK_OVERLAP_BLOCKS :] if config.CHUNK_OVERLAP_BLOCKS else []
+        # 節內換塊時保留結尾幾段當重疊(避免上下文斷裂);跨標題切換則乾淨切開
+        overlap = (
+            cur_blocks[-config.CHUNK_OVERLAP_BLOCKS :]
+            if (keep_overlap and config.CHUNK_OVERLAP_BLOCKS)
+            else []
+        )
         cur_blocks = list(overlap)
         cur_len = sum(len(b) for b in cur_blocks)
 
     for heading, block in iter_blocks(text):
+        # 標題層級:# → 1、## → 2…;非標題段落為 0
+        first = block.lstrip()
+        level = len(first) - len(first.lstrip("#")) if first.startswith("#") else 0
+        # 1. 碰到「夠高層級」的標題 → 收掉前一節,乾淨切開
+        #    (### 以下的子節不切,跟父節留同一塊,避免概括式問句撈到空殼父節)
+        if 0 < level <= config.CHUNK_SPLIT_HEADING_LEVEL and cur_blocks:
+            flush(keep_overlap=False)
+            cur_heading = heading
         if not cur_blocks:
             cur_heading = heading
-        # 單一段落就超過上限 → 硬切成數段
+        # 2. 單一段落就超過上限 → 硬切成數段
         if len(block) > config.CHUNK_MAX_CHARS:
             flush()
             for i in range(0, len(block), config.CHUNK_MAX_CHARS):
@@ -67,7 +82,7 @@ def chunk_markdown(text: str):
                 prefix = f"## {heading}\n\n" if (heading and not starts_with_heading) else ""
                 chunks.append({"heading": heading, "text": prefix + piece})
             continue
-        # 塞不下了 → 先收掉目前的 chunk 再開新的
+        # 3. 節內塞不下了 → 先收掉目前的 chunk 再開新的(保留重疊)
         if cur_len + len(block) > config.CHUNK_MAX_CHARS:
             flush()
             cur_heading = heading

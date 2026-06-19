@@ -30,7 +30,7 @@ COPY prompts/ ./prompts/
 COPY corpus/ ./corpus/
 
 # 在 build 階段就建好向量庫、並把 embedding 模型一起烤進 image,
-# 讓容器冷啟動不必再下載(否則每次冷啟要抓 ~470MB 模型)。
+# 讓容器冷啟動不必再下載(bge-m3 ~2.3GB,這步會抓較久)。
 RUN python ingest.py
 
 # ─────────────────────────────────────────────────────────────
