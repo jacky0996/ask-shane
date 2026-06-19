@@ -73,12 +73,13 @@ streamlit run app.py        # 網頁
 <summary><b>🐳 用 Docker 跑(已內含建庫 + 模型)</b></summary>
 
 ```bash
-docker build -t ask-shane .
+docker build -t ask-shane .          # 本機 dev 用 Dockerfile
 docker run -p 8080:8080 -e GEMINI_API_KEY=你的key ask-shane
 # 開 http://localhost:8080
 ```
 
-多階段 build:相依與知識庫都烤進 image,容器**冷啟動不必再下載模型**;以非 root 帳號執行,並附 Streamlit 健康檢查。
+知識庫與 bge-m3 模型都烤進 image,容器**冷啟動不必再下載**。
+Cloud Run 部署則用 **`Dockerfile.prod`**(多階段瘦身、非 root、附健康檢查),見 [`DEPLOY.md`](DEPLOY.md)。
 </details>
 
 ### 環境變數
@@ -155,7 +156,8 @@ ask-shane/
 ├── ask.py               # CLI 問答:檢索 → 組 prompt → Gemini → 答案+來源
 ├── app.py               # Streamlit 網頁介面
 ├── tests/               # 單元測試(切塊、prompt 組裝)
-├── Dockerfile           # 多階段 build,部署 Cloud Run
+├── Dockerfile           # 本機 dev 用(單階段)
+├── Dockerfile.prod      # Cloud Run 用(多階段、bge-m3 烤進 image、非 root)
 ├── DEPLOY.md            # 部署到 Cloud Run 的一次性設定
 └── .github/workflows/   # ci.yml(lint+測試把關;部署交給 Cloud Run trigger)
 ```

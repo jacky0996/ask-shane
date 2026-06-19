@@ -1,73 +1,31 @@
-# Ask Shane — Streamlit RAG bot on Cloud Run
-# 多階段 build:builder 裝相依 + 建知識庫,runtime 只留執行所需,image 更小更乾淨。
+# Ask Shane — dev image(本機 docker 跑用)。
+# 單階段、簡單;Cloud Run 的 production image 請用 Dockerfile.prod。
+FROM python:3.12-slim
 
-# ─────────────────────────────────────────────────────────────
-# Stage 1 — builder:裝相依、建向量庫、烤 embedding 模型
-# ─────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS builder
-
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
     HF_HOME=/app/.hf_cache
 
 WORKDIR /app
 
-# 用 venv 裝相依,之後整包 venv 搬到 runtime 階段(乾淨、好複製)。
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# 先升級 pip(固定版本,build 可重現),再裝相依(獨立成一層吃 build cache)。
-# torch 裝 CPU 版,避免抓進整包 CUDA(image 大、build 慢)。
-RUN pip install --no-cache-dir "pip==24.3.1"
+# torch 裝 CPU 版,避免抓進整包 CUDA。
 COPY requirements.txt .
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
  && pip install --no-cache-dir -r requirements.txt
 
-# 程式與語料
-COPY config.py ingest.py ask.py app.py ./
-COPY prompts/ ./prompts/
-COPY corpus/ ./corpus/
+COPY . .
 
-# 在 build 階段就建好向量庫、並把 embedding 模型一起烤進 image,
-# 讓容器冷啟動不必再下載(bge-m3 ~2.3GB,這步會抓較久)。
+# 建知識庫(下載 bge-m3 ~2.3GB + 算 embedding)。本機 build 一次即可。
 RUN python ingest.py
 
-# ─────────────────────────────────────────────────────────────
-# Stage 2 — runtime:只帶執行需要的東西,跑在非 root 帳號下
-# ─────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
-
-ENV PYTHONUNBUFFERED=1 \
-    HF_HOME=/app/.hf_cache \
-    HF_HUB_OFFLINE=1 \
-    TRANSFORMERS_OFFLINE=1 \
-    PATH="/opt/venv/bin:$PATH"
-
-# 非 root 使用者(安全性:容器不以 root 跑)
-RUN useradd --create-home --uid 10001 appuser
-
-WORKDIR /app
-
-# 從 builder 搬:相依(venv)、程式、語料、建好的向量庫、烤好的模型快取
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder --chown=appuser:appuser /app /app
-
-USER appuser
-
-# Cloud Run 會注入 PORT(預設 8080);Streamlit 綁 0.0.0.0、關掉互動式設定。
 ENV PORT=8080
 EXPOSE 8080
 
-# 健康檢查:打 Streamlit 內建的 /_stcore/health(用 python,免裝 curl)。
-# urlopen 遇非 2xx 會丟例外 → 退出碼非 0 → 標記 unhealthy。
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8080')+'/_stcore/health')" || exit 1
-
+# --server.fileWatcherType=none:關掉熱重載 watcher(會誤觸 torchvision import 而崩潰)。
 CMD streamlit run app.py \
     --server.port=${PORT} \
     --server.address=0.0.0.0 \
     --server.headless=true \
-    --server.enableCORS=false \
-    --server.enableXsrfProtection=false \
+    --server.fileWatcherType=none \
     --browser.gatherUsageStats=false

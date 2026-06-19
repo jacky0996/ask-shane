@@ -1,6 +1,6 @@
 # 部署到 Cloud Run(一次性設定)
 
-> **流程**:開分支改 → 開 PR(GitHub Actions 跑 `ruff + pytest`)→ **分支保護擋著:CI 綠燈才准併 main** → 併進 main → **Cloud Run 內建的持續部署(Cloud Build)自己用 `Dockerfile` build + 部署**。
+> **流程**:開分支改 → 開 PR(GitHub Actions 跑 `ruff + pytest`)→ **分支保護擋著:CI 綠燈才准併 main** → 併進 main → **Cloud Run 內建的持續部署(Cloud Build)自己用 `Dockerfile.prod` build + 部署**。
 >
 > 分工:**GitHub Actions 只負責 CI 把關,部署交給 Cloud Run 原生 trigger。** 因為合併進 main 的前提是 CI 已綠,所以 main 上的部署等於被測試擋過了。
 
@@ -44,7 +44,7 @@ gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
 Cloud Run console → **建立服務 / 你的 `ask-shane` 服務 → 設定持續部署(Set up continuous deployment)**:
 
 - **來源**:連結 GitHub,選 `你的帳號/ask-shane`,分支填 `^main$`(只在 main 部署,不在 PR)。
-- **建置類型**:選 **Dockerfile**(repo 根目錄已有 [`Dockerfile`](Dockerfile),會自動用它 build)。
+- **建置類型**:選 **Dockerfile**,並把 Dockerfile 路徑指到 **`Dockerfile.prod`**(Cloud Run 用的 production image;根目錄的 `Dockerfile` 是本機 dev 用的簡化版)。
 
 設定後,每次有 commit 進 main,Cloud Build 會自動 build image 並部署新 revision。
 
